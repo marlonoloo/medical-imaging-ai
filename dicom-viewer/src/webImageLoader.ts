@@ -1,4 +1,4 @@
-import { imageLoader, metaData, type Types } from '@cornerstonejs/core';
+import { imageLoader, metaData} from '@cornerstonejs/core';
 
 export function registerWebImageLoader() {
   imageLoader.registerImageLoader('web', (imageId) => {

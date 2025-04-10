@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "html-webpack-plugin": "^5.6.3",
     "ts-loader": "9.5.1",
     "ts-node": "^10.9.2",
     "typescript": "5.5.4",
@@ -25,8 +26,10 @@
   "dependencies": {
     "@cornerstonejs/core": "^3.4.0",
     "@cornerstonejs/dicom-image-loader": "^3.4.0",
+    "@cornerstonejs/nifti-volume-loader": "^3.9.3",
     "@cornerstonejs/tools": "^3.4.0",
     "cornerstone-web-image-loader": "^2.1.1",
+    "pako": "^2.1.0",
     "path-browserify": "^1.0.1"
   }
 }

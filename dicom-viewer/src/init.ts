@@ -47,7 +47,11 @@ export async function initCornerstoneServices() {
   return csInit(config);
 }
 
-export async function run(dicomElement: HTMLElement, pngElement: HTMLElement): Promise<{ dicomViewport: Types.IStackViewport, pngViewport: Types.IStackViewport }> {
+export async function run<T extends Types.IViewport>(
+  dicomElement: HTMLElement, 
+  pngElement: HTMLElement, 
+  viewportType: Enums.ViewportType = Enums.ViewportType.STACK
+): Promise<{ dicomViewport: T, pngViewport: T }> {
   // Initialize services
   await initCornerstoneServices();
   registerWebImageLoader();
@@ -89,17 +93,19 @@ export async function run(dicomElement: HTMLElement, pngElement: HTMLElement): P
   const viewportInputArray = [
     {
       viewportId: 'CT_STACK',
-      type: ViewportType.STACK,
+      type: viewportType,
       element: dicomElement as HTMLDivElement,
       defaultOptions: {
+        orientation: viewportType === Enums.ViewportType.ORTHOGRAPHIC ? Enums.OrientationAxis.AXIAL : undefined,
         background: <Types.Point3>[0.2, 0, 0.2],
       },
     },
     {
       viewportId: 'PNG_STACK',
-      type: ViewportType.STACK,
+      type: viewportType,
       element: pngElement as HTMLDivElement,
       defaultOptions: {
+        orientation: viewportType === Enums.ViewportType.ORTHOGRAPHIC ? Enums.OrientationAxis.AXIAL : undefined,
         background: <Types.Point3>[0.2, 0, 0.2],
       },
     },
@@ -107,8 +113,8 @@ export async function run(dicomElement: HTMLElement, pngElement: HTMLElement): P
 
   renderingEngine.setViewports(viewportInputArray);
 
-  const dicomViewport = renderingEngine.getViewport('CT_STACK') as Types.IStackViewport;
-  const pngViewport = renderingEngine.getViewport('PNG_STACK') as Types.IStackViewport;
+  const dicomViewport = renderingEngine.getViewport('CT_STACK') as T;
+  const pngViewport = renderingEngine.getViewport('PNG_STACK') as T;
 
   // Add tools to both viewports
   toolGroup.addViewport('CT_STACK', renderingEngineId);

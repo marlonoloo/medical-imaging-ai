@@ -1,6 +1,7 @@
 // src/index.ts
 import { run } from './init';
 import { setupUI } from './ui';
+import { Types } from '@cornerstonejs/core';
 
 (async function main() {
   const dicomElement = document.getElementById('cornerstone-element');
@@ -10,9 +11,6 @@ import { setupUI } from './ui';
     throw new Error("Required viewport elements not found");
   }
 
-  // Initialize both viewports
-  const { dicomViewport, pngViewport } = await run(dicomElement, pngElement);
-  
-  // Set up UI handlers
+  const { dicomViewport, pngViewport } = await run<Types.IStackViewport>(dicomElement, pngElement);
   setupUI(dicomViewport, pngViewport);
 })();

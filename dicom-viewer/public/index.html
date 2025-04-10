@@ -1,27 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dicom Viewer</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>Medical Image Analysis Tools</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .nav-links a {
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        .nav-links a:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-  <div id="app">
-    <h1 id="demo-title">Dicom Viewer</h1>
-    <p id="demo-description">Upload a DICOM file below</p>
-    <form id="file-form">
-      <input id="selectFile" type="file">
-
-    </form>
-    <div id="viewports">
-      <div id="cornerstone-element" class="viewport"></div>
-      <div id="processed-cornerstone-element" class="viewport"></div>
+    <div class="nav-links">
+        <a href="/classifier">Pneumonia Classifier</a>
+        <a href="/detector">Cardiac Detector</a>
+        <a href="/segmentor">Atrium Segmentor</a>
     </div>
-    <div class="button-group">
-      <button type="button" id="submitProcessing">Process Pneumonia</button>
-      <button type="button" id="submitCardiac">Process Cardiac</button>
-    </div>
-  </div>
-  <script src="/bundle.js"></script>
 </body>
 </html>
