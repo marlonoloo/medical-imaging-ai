@@ -13,6 +13,21 @@ import {
   createNiftiImageIdsAndCacheMetadata,
 } from '@cornerstonejs/nifti-volume-loader';
 import { inflate } from 'pako';
+import { ViewportService } from '../services/viewportService';
+import { backendService } from '../services/backendService';
+
+// Simple state to track the current NIFTI file
+class NiftiState {
+  private static currentFile: File | null = null;
+
+  static setCurrentFile(file: File | null): void {
+    this.currentFile = file;
+  }
+
+  static getCurrentFile(): File | null {
+    return this.currentFile;
+  }
+}
 
 const {
   WindowLevelTool,
@@ -26,7 +41,7 @@ const { MouseBindings } = cornerstoneTools.Enums;
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
 const toolGroupId = 'NIFTI_TOOL_GROUP'; // Changed to avoid conflicts
 
-export function setupSegmentorUI(dicomViewport: Types.IVolumeViewport, resultViewport: Types.IVolumeViewport) {
+export function setupSegmentorUI(dicomViewport: Types.IVolumeViewport, pngViewport: Types.IStackViewport) {
   const dicomElement = document.getElementById('cornerstone-element');
   const resultElement = document.getElementById('processed-cornerstone-element');
   
@@ -45,10 +60,33 @@ export function setupSegmentorUI(dicomViewport: Types.IVolumeViewport, resultVie
     if (!file) return;
     
     try {
+      NiftiState.setCurrentFile(file);
       await loadAndViewNiftiFile(file, dicomViewport);
     } catch (error) {
       console.error('Error loading NIFTI file:', error);
       alert('Failed to load NIFTI file');
+    }
+  });
+
+  // Setup process segmentation button
+  const submitButton = document.getElementById('submitSegmentation');
+  submitButton?.addEventListener('click', async () => {
+    try {
+      // Get the current NIFTI file 
+      const currentFile = NiftiState.getCurrentFile();
+      if (!currentFile) {
+        alert('Please load a NIFTI file first');
+        return;
+      }
+      
+      // Send to backend for processing
+      const imageUrl = await backendService.processSegmentation(currentFile);
+      
+      // Load the resulting PNG into the second viewport
+      await ViewportService.loadWebImage(imageUrl, pngViewport);
+    } catch (error) {
+      console.error('Error processing segmentation:', error);
+      alert('Failed to process segmentation');
     }
   });
 
