@@ -28,7 +28,9 @@
     "@cornerstonejs/dicom-image-loader": "^3.4.0",
     "@cornerstonejs/nifti-volume-loader": "^3.9.3",
     "@cornerstonejs/tools": "^3.4.0",
+    "@types/jszip": "^3.4.1",
     "cornerstone-web-image-loader": "^2.1.1",
+    "jszip": "^3.10.1",
     "pako": "^2.1.0",
     "path-browserify": "^1.0.1"
   }

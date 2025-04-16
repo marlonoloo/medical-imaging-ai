@@ -44,30 +44,19 @@ export class BackendService {
     return 'web:' + URL.createObjectURL(blob);
   }
 
-  async processSegmentation(niftiData: any): Promise<string> {
-    // Convert the volume data to a format that can be sent to the server
+  async processSegmentation(niftiFile: File): Promise<string> {
     const formData = new FormData();
+    formData.append('nifti', niftiFile);
     
-    // If we have raw data, we can convert it to a Blob
-    if (niftiData.data) {
-      const blob = new Blob([niftiData.data], { type: 'application/octet-stream' });
-      formData.append('nifti', blob, 'volume.nii');
-    } else if (niftiData instanceof File) {
-      // If it's already a file, use it directly
-      formData.append('nifti', niftiData);
-    } else {
-      throw new Error('Invalid NIFTI data format');
-    }
-
-    const response = await fetch(`${this.baseUrl}/segment/atrium`, {
+    const response = await fetch(`${this.baseUrl}/segment_atrium`, {
       method: 'POST',
       body: formData,
     });
-
+    
     if (!response.ok) {
       throw new Error('Failed to process segmentation');
     }
-
+    
     const blob = await response.blob();
     return 'web:' + URL.createObjectURL(blob);
   }

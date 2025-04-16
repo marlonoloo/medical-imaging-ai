@@ -6,6 +6,7 @@ import {
   setVolumesForViewports,
   eventTarget,
   imageLoader,
+  metaData,
 } from '@cornerstonejs/core';
 import * as cornerstoneTools from '@cornerstonejs/tools';
 import {
@@ -13,35 +14,29 @@ import {
   createNiftiImageIdsAndCacheMetadata,
 } from '@cornerstonejs/nifti-volume-loader';
 import { inflate } from 'pako';
-import { ViewportService } from '../services/viewportService';
 import { backendService } from '../services/backendService';
-
-// Simple state to track the current NIFTI file
-class NiftiState {
-  private static currentFile: File | null = null;
-
-  static setCurrentFile(file: File | null): void {
-    this.currentFile = file;
-  }
-
-  static getCurrentFile(): File | null {
-    return this.currentFile;
-  }
-}
+import JSZip from 'jszip';
 
 const {
   WindowLevelTool,
   PanTool,
   ZoomTool,
-  ToolGroupManager,
   StackScrollTool,
+  ToolGroupManager,
+  Enums: csToolsEnums,
 } = cornerstoneTools;
 
-const { MouseBindings } = cornerstoneTools.Enums;
+const { MouseBindings } = csToolsEnums;
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-const toolGroupId = 'NIFTI_TOOL_GROUP'; // Changed to avoid conflicts
+const toolGroupId = 'SEGMENTOR_TOOL_GROUP';
 
-export function setupSegmentorUI(dicomViewport: Types.IVolumeViewport, pngViewport: Types.IStackViewport) {
+// Store the current file for processing
+let currentNiftiFile: File | null = null;
+
+export function setupSegmentorUI(
+  volumeViewport: Types.IVolumeViewport,
+  resultViewport: Types.IStackViewport
+) {
   const dicomElement = document.getElementById('cornerstone-element');
   const resultElement = document.getElementById('processed-cornerstone-element');
   
@@ -60,38 +55,130 @@ export function setupSegmentorUI(dicomViewport: Types.IVolumeViewport, pngViewpo
     if (!file) return;
     
     try {
-      NiftiState.setCurrentFile(file);
-      await loadAndViewNiftiFile(file, dicomViewport);
+      currentNiftiFile = file;
+      await loadAndViewNiftiFile(file, volumeViewport);
     } catch (error) {
       console.error('Error loading NIFTI file:', error);
       alert('Failed to load NIFTI file');
     }
   });
 
-  // Setup process segmentation button
-  const submitButton = document.getElementById('submitSegmentation');
-  submitButton?.addEventListener('click', async () => {
+  // Setup segmentation button
+  const segmentButton = document.getElementById('submitSegmentation');
+  segmentButton?.addEventListener('click', async () => {
+    if (!currentNiftiFile) {
+      alert('Please upload a NIFTI file first');
+      return;
+    }
+
     try {
-      // Get the current NIFTI file 
-      const currentFile = NiftiState.getCurrentFile();
-      if (!currentFile) {
-        alert('Please load a NIFTI file first');
-        return;
-      }
+      const imageUrl = await backendService.processSegmentation(currentNiftiFile);
       
-      // Send to backend for processing
-      const imageUrl = await backendService.processSegmentation(currentFile);
-      
-      // Load the resulting PNG into the second viewport
-      await ViewportService.loadWebImage(imageUrl, pngViewport);
+      // Load the segmentation results (ZIP file with slices) into the result viewport
+      await loadSegmentationResult(imageUrl, resultViewport);
     } catch (error) {
       console.error('Error processing segmentation:', error);
       alert('Failed to process segmentation');
     }
   });
 
-  // Initialize tools
-  setupTools(dicomViewport);
+  // Initialize tools for both viewports
+  setupTools(volumeViewport, resultViewport);
+}
+
+// Function to load the segmentation result into the viewport
+async function loadSegmentationResult(imageUrl: string, viewport: Types.IStackViewport) {
+  try {
+    // Get the raw URL without the 'web:' prefix
+    const rawUrl = imageUrl.replace('web:', '');
+    
+    // Fetch the zip file
+    const response = await fetch(rawUrl);
+    const zipBlob = await response.blob();
+    
+    // Load the ZIP file using JSZip
+    const zip = new JSZip();
+    await zip.loadAsync(zipBlob);
+    
+    // Get all PNG files from the ZIP, excluding those in debug folder
+    const pngFiles = Object.keys(zip.files).filter(
+        filename => filename.endsWith('.png') && !filename.startsWith('debug/')
+    );
+
+    pngFiles.sort(); // Ensure slices are in order
+
+    if (pngFiles.length === 0) {
+      throw new Error('No valid PNG slices found in the zip file.');
+    }
+    
+    // Create image IDs for each slice
+    const imageIds = await Promise.all(
+      pngFiles.map(async (filename) => {
+        const file = zip.files[filename];
+        const blob = await file.async('blob');
+        const objectUrl = URL.createObjectURL(blob);
+        return `web:${objectUrl}`;
+      })
+    );
+    
+    // Reverse the order of image IDs for display
+    imageIds.reverse();
+    
+    // Load the first image (which is now the last slice numerically) to get its dimensions
+    const firstImage = await imageLoader.loadAndCacheImage(imageIds[0]);
+    const { rows, columns } = firstImage;
+    
+    // Create metadata for the stack
+    const imageMetadata = {
+      BitsAllocated: 8,
+      BitsStored: 8,
+      HighBit: 7,
+      PhotometricInterpretation: 'RGB',
+      PixelRepresentation: 0,
+      SamplesPerPixel: 3,
+      PixelSpacing: [1, 1],
+      ImageOrientationPatient: [1, 0, 0, 0, 1, 0],
+      ImagePositionPatient: [0, 0, 0],
+      FrameOfReferenceUID: '1.2.3',
+      Rows: rows,
+      Columns: columns,
+    };
+    
+    // Add metadata for each image
+    imageIds.forEach((imageId) => {
+      metaData.addProvider((type: string) => {
+        if (type === 'imagePixelModule') {
+          return imageMetadata;
+        }
+        return undefined;
+      });
+    });
+
+    // Pre-load all images in batches to avoid overwhelming the system
+    const batchSize = 10;
+    for (let i = 0; i < imageIds.length; i += batchSize) {
+      const batch = imageIds.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (imageId) => {
+          await imageLoader.loadAndCacheImage(imageId);
+        })
+      );
+    }
+    
+    // Set the images in the viewport
+    await viewport.setStack(imageIds);
+    
+    // Configure viewport for optimal performance
+    viewport.setOptions({
+      background: [0, 0, 0],
+      suppressEvents: true,
+    });
+    
+    viewport.render();
+  } catch (error) {
+    console.error('Error loading segmentation result:', error);
+    throw new Error('Failed to load segmentation result');
+  }
 }
 
 async function loadAndViewNiftiFile(file: File, viewport: Types.IVolumeViewport) {
@@ -168,13 +255,13 @@ async function decompressGzip(compressedData: ArrayBuffer): Promise<ArrayBuffer>
   return inflate(compressed).buffer;
 }
 
-function setupTools(viewport: Types.IVolumeViewport) {
+function setupTools(volumeViewport: Types.IVolumeViewport, resultViewport: Types.IStackViewport) {
   const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
 
-  // Clear any existing tool groups for this viewport
+  // Clear any existing tool groups for these viewports
   const existingGroup = ToolGroupManager.getToolGroupForViewport(
-    viewport.id,
-    viewport.getRenderingEngine().id
+    volumeViewport.id,
+    volumeViewport.getRenderingEngine().id
   );
   if (existingGroup) {
     ToolGroupManager.destroyToolGroup(existingGroup.id);
@@ -205,5 +292,7 @@ function setupTools(viewport: Types.IVolumeViewport) {
     bindings: [{ mouseButton: MouseBindings.Wheel }],
   });
 
-  toolGroup.addViewport(viewport.id, viewport.getRenderingEngine().id);
+  // Add both viewports to the tool group
+  toolGroup.addViewport(volumeViewport.id, volumeViewport.getRenderingEngine().id);
+  toolGroup.addViewport(resultViewport.id, resultViewport.getRenderingEngine().id);
 }
