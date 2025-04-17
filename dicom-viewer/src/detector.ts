@@ -1,6 +1,6 @@
 import { run } from './init';
 import { setupDetectorUI } from './ui/detectorUI';
-import { Types } from '@cornerstonejs/core';
+import { Types, getRenderingEngine } from '@cornerstonejs/core';
 
 (async function main() {
   const dicomElement = document.getElementById('cornerstone-element');
@@ -10,6 +10,6 @@ import { Types } from '@cornerstonejs/core';
     throw new Error("Required viewport elements not found");
   }
 
-  const { dicomViewport, pngViewport } = await run<Types.IStackViewport>(dicomElement, resultElement);
-  setupDetectorUI(dicomViewport, pngViewport);
+  const { dicomViewport, pngViewport, renderingEngineId, dicomViewportId, pngViewportId } = await run<Types.IStackViewport>(dicomElement, resultElement);
+  setupDetectorUI(renderingEngineId, dicomViewportId, pngViewportId);
 })();

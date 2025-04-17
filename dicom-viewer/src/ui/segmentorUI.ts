@@ -28,10 +28,10 @@ const {
 
 const { MouseBindings } = csToolsEnums;
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-const toolGroupId = 'SEGMENTOR_TOOL_GROUP';
 
 // Store the current file for processing
 let currentNiftiFile: File | null = null;
+let defaultNiftiVoiRange: Types.VOIRange | undefined;
 
 export function setupSegmentorUI(
   volumeViewport: Types.IVolumeViewport,
@@ -84,6 +84,50 @@ export function setupSegmentorUI(
 
   // Initialize tools for both viewports
   setupTools(volumeViewport, resultViewport);
+
+  defaultNiftiVoiRange = undefined;
+
+  // --- Modify Reset Button Logic --- 
+  const resetPrimaryButton = document.getElementById('resetPrimaryViewport');
+  const resetSecondaryButton = document.getElementById('resetSecondaryViewport');
+
+  resetPrimaryButton?.addEventListener('click', () => {
+    if (volumeViewport) {
+      // 1. Store current camera position/focal point (determines slice)
+      const currentCamera = volumeViewport.getCamera();
+
+      // 2. Reset camera (resets zoom/pan AND slice position)
+      volumeViewport.resetCamera();
+
+      // 3. Get the zoom level (parallelScale) from the reset state
+      const resetCameraState = volumeViewport.getCamera();
+
+      // 4. Restore original slice position but keep reset zoom
+      volumeViewport.setCamera({
+        position: currentCamera.position,
+        focalPoint: currentCamera.focalPoint,
+        viewUp: resetCameraState.viewUp, // Use reset viewUp
+        parallelScale: resetCameraState.parallelScale, // Use reset zoom
+      });
+      
+      // 5. Reset VOI using stored default range
+      if (defaultNiftiVoiRange) {
+        volumeViewport.setProperties({ voiRange: defaultNiftiVoiRange });
+      }
+      
+      // 6. Render
+      volumeViewport.render();
+    }
+  });
+
+  resetSecondaryButton?.addEventListener('click', () => {
+    if (resultViewport) {
+      resultViewport.resetCamera();
+      resultViewport.resetProperties(); 
+      resultViewport.render();
+    }
+  });
+  // --- End Reset Button Logic --- 
 }
 
 // Function to load the segmentation result into the viewport
@@ -121,10 +165,10 @@ async function loadSegmentationResult(imageUrl: string, viewport: Types.IStackVi
       })
     );
     
-    // Reverse the order of image IDs for display
-    imageIds.reverse();
+    // Comment out or remove the reversal
+    // imageIds.reverse(); 
     
-    // Load the first image (which is now the last slice numerically) to get its dimensions
+    // Load the first image (which is now the first slice numerically) to get its dimensions
     const firstImage = await imageLoader.loadAndCacheImage(imageIds[0]);
     const { rows, columns } = firstImage;
     
@@ -202,8 +246,64 @@ async function loadAndViewNiftiFile(file: File, viewport: Types.IVolumeViewport)
       [{ volumeId }],
       [viewport.id]
     );
+    
+    // --- Store default VOI range --- 
+    try {
+        const properties = viewport.getProperties();
+        defaultNiftiVoiRange = properties.voiRange ? { ...properties.voiRange } : undefined;
+        console.log('Stored default VOI range:', defaultNiftiVoiRange);
+    } catch (e) {
+        console.error('Could not get default VOI range after load', e);
+        defaultNiftiVoiRange = undefined; 
+    }
+    // --- End storing default VOI range ---
+
+    // --- Set initial slice to index 0 --- 
+    const imageData = volume.imageData; 
+    if (imageData) {
+        const initialCamera = viewport.getCamera(); // Get camera state AFTER volume load
+        const dimensions = imageData.getDimensions();
+        const spacing = imageData.getSpacing();
+        const origin = imageData.getOrigin();
+        const ipp = imageData.getDirection(); // Direction Cosines
+        const viewPlaneNormal: Types.Point3 = [ipp[2], ipp[5], ipp[8]];
+
+        // Calculate distance from origin to center slice along normal
+        const centerSliceIndex = Math.floor(dimensions[2] / 2);
+        const distanceToCenter = centerSliceIndex * spacing[2];
+        
+        // Distance from origin to slice 0 along normal is 0
+        const distanceToSlice0 = 0;
+
+        // How much to move the camera along the normal from the center position
+        // delta < 0 means move towards origin (lower slice indices)
+        const deltaDistance = distanceToSlice0 - distanceToCenter;
+
+        // Calculate the new focal point and position by shifting along the normal
+        const newFocalPoint: Types.Point3 = [
+          initialCamera.focalPoint[0] + deltaDistance * viewPlaneNormal[0],
+          initialCamera.focalPoint[1] + deltaDistance * viewPlaneNormal[1],
+          initialCamera.focalPoint[2] + deltaDistance * viewPlaneNormal[2],
+        ];
+        const newPosition: Types.Point3 = [
+            initialCamera.position[0] + deltaDistance * viewPlaneNormal[0],
+            initialCamera.position[1] + deltaDistance * viewPlaneNormal[1],
+            initialCamera.position[2] + deltaDistance * viewPlaneNormal[2],
+        ];
+
+        viewport.setCamera({ 
+            focalPoint: newFocalPoint,
+            position: newPosition,
+            // Keep other properties from the state after volume load
+            viewUp: initialCamera.viewUp, 
+            parallelScale: initialCamera.parallelScale
+        });
+        console.log('Set initial camera for slice 0');
+    }
+    // --- End setting initial slice ---
 
     viewport.render();
+
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -256,43 +356,62 @@ async function decompressGzip(compressedData: ArrayBuffer): Promise<ArrayBuffer>
 }
 
 function setupTools(volumeViewport: Types.IVolumeViewport, resultViewport: Types.IStackViewport) {
-  const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
+  // Define separate IDs
+  const volumeToolGroupId = 'VOLUME_TOOL_GROUP';
+  const stackToolGroupId = 'STACK_TOOL_GROUP';
 
-  // Clear any existing tool groups for these viewports
-  const existingGroup = ToolGroupManager.getToolGroupForViewport(
-    volumeViewport.id,
-    volumeViewport.getRenderingEngine().id
-  );
-  if (existingGroup) {
-    ToolGroupManager.destroyToolGroup(existingGroup.id);
-  }
+  // --- Destroy existing groups if they exist (important for HMR/re-runs) ---
+  const volumeExistingGroup = ToolGroupManager.getToolGroupForViewport(volumeViewport.id, volumeViewport.getRenderingEngine().id);
+  if (volumeExistingGroup) ToolGroupManager.destroyToolGroup(volumeExistingGroup.id);
+  const stackExistingGroup = ToolGroupManager.getToolGroupForViewport(resultViewport.id, resultViewport.getRenderingEngine().id);
+  if (stackExistingGroup) ToolGroupManager.destroyToolGroup(stackExistingGroup.id);
+  // Safety check: destroy groups by ID directly if somehow detached from viewport
+  if (ToolGroupManager.getToolGroup(volumeToolGroupId)) ToolGroupManager.destroyToolGroup(volumeToolGroupId);
+  if (ToolGroupManager.getToolGroup(stackToolGroupId)) ToolGroupManager.destroyToolGroup(stackToolGroupId);
+  // --- End Destroy --- 
 
-  // Add tools
-  cornerstoneTools.addTool(WindowLevelTool);
-  cornerstoneTools.addTool(PanTool);
-  cornerstoneTools.addTool(ZoomTool);
-  cornerstoneTools.addTool(StackScrollTool);
+  // Create separate tool groups
+  const volumeToolGroup = ToolGroupManager.createToolGroup(volumeToolGroupId);
+  const stackToolGroup = ToolGroupManager.createToolGroup(stackToolGroupId);
 
-  toolGroup.addTool(WindowLevelTool.toolName);
-  toolGroup.addTool(PanTool.toolName);
-  toolGroup.addTool(ZoomTool.toolName);
-  toolGroup.addTool(StackScrollTool.toolName);
+  // --- Setup Volume Tool Group --- 
+  [volumeToolGroup, stackToolGroup].forEach(toolGroup => {
+    // Add tools (same tools for both for now)
+    cornerstoneTools.addTool(WindowLevelTool); // Ensure tools are added globally once
+    cornerstoneTools.addTool(PanTool);
+    cornerstoneTools.addTool(ZoomTool);
+    cornerstoneTools.addTool(StackScrollTool);
 
-  // Set tool modes
-  toolGroup.setToolActive(WindowLevelTool.toolName, {
-    bindings: [{ mouseButton: MouseBindings.Primary }],
+    toolGroup.addTool(WindowLevelTool.toolName);
+    toolGroup.addTool(PanTool.toolName);
+    toolGroup.addTool(ZoomTool.toolName);
+    toolGroup.addTool(StackScrollTool.toolName);
+    
+    // Set basic bindings (same for both)
+    toolGroup.setToolActive(WindowLevelTool.toolName, {
+      bindings: [{ mouseButton: MouseBindings.Primary }],
+    });
+    toolGroup.setToolActive(PanTool.toolName, {
+      bindings: [{ mouseButton: MouseBindings.Auxiliary }],
+    });
+    toolGroup.setToolActive(ZoomTool.toolName, {
+      bindings: [{ mouseButton: MouseBindings.Secondary }],
+    });
+    toolGroup.setToolActive(StackScrollTool.toolName, { 
+      bindings: [{ mouseButton: MouseBindings.Wheel }],
+    });
   });
-  toolGroup.setToolActive(PanTool.toolName, {
-    bindings: [{ mouseButton: MouseBindings.Auxiliary }],
-  });
-  toolGroup.setToolActive(ZoomTool.toolName, {
-    bindings: [{ mouseButton: MouseBindings.Secondary }],
-  });
-  toolGroup.setToolActive(StackScrollTool.toolName, {
-    bindings: [{ mouseButton: MouseBindings.Wheel }],
-  });
 
-  // Add both viewports to the tool group
-  toolGroup.addViewport(volumeViewport.id, volumeViewport.getRenderingEngine().id);
-  toolGroup.addViewport(resultViewport.id, resultViewport.getRenderingEngine().id);
+  // Configure StackScrollTool *differently* for each group
+  volumeToolGroup.setToolConfiguration(StackScrollTool.toolName, { 
+    invert: true // Keep inverted for Volume viewport
+  });
+  stackToolGroup.setToolConfiguration(StackScrollTool.toolName, { 
+    invert: false // Use default (non-inverted) for Stack viewport
+  });
+  // --- End Group Setups ---
+
+  // Add viewports to their respective tool groups
+  volumeToolGroup.addViewport(volumeViewport.id, volumeViewport.getRenderingEngine().id);
+  stackToolGroup.addViewport(resultViewport.id, resultViewport.getRenderingEngine().id);
 }

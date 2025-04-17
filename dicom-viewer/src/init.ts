@@ -51,7 +51,7 @@ export async function run<T extends Types.IViewport>(
   dicomElement: HTMLElement, 
   pngElement: HTMLElement, 
   viewportType: Enums.ViewportType = Enums.ViewportType.STACK
-): Promise<{ dicomViewport: T, pngViewport: T }> {
+): Promise<{ dicomViewport: T, pngViewport: T, renderingEngineId: string, dicomViewportId: string, pngViewportId: string }> {
   // Initialize services
   await initCornerstoneServices();
   registerWebImageLoader();
@@ -90,9 +90,11 @@ export async function run<T extends Types.IViewport>(
   const renderingEngine = new RenderingEngine(renderingEngineId);
 
   // Configure both viewports
+  const dicomViewportId = 'CT_STACK';
+  const pngViewportId = 'PNG_STACK';
   const viewportInputArray = [
     {
-      viewportId: 'CT_STACK',
+      viewportId: dicomViewportId,
       type: viewportType,
       element: dicomElement as HTMLDivElement,
       defaultOptions: {
@@ -101,7 +103,7 @@ export async function run<T extends Types.IViewport>(
       },
     },
     {
-      viewportId: 'PNG_STACK',
+      viewportId: pngViewportId,
       type: viewportType,
       element: pngElement as HTMLDivElement,
       defaultOptions: {
@@ -113,12 +115,12 @@ export async function run<T extends Types.IViewport>(
 
   renderingEngine.setViewports(viewportInputArray);
 
-  const dicomViewport = renderingEngine.getViewport('CT_STACK') as T;
-  const pngViewport = renderingEngine.getViewport('PNG_STACK') as T;
+  const dicomViewport = renderingEngine.getViewport(dicomViewportId) as T;
+  const pngViewport = renderingEngine.getViewport(pngViewportId) as T;
 
   // Add tools to both viewports
-  toolGroup.addViewport('CT_STACK', renderingEngineId);
-  toolGroup.addViewport('PNG_STACK', renderingEngineId);
+  toolGroup.addViewport(dicomViewportId, renderingEngineId);
+  toolGroup.addViewport(pngViewportId, renderingEngineId);
 
-  return { dicomViewport, pngViewport };
+  return { dicomViewport, pngViewport, renderingEngineId, dicomViewportId, pngViewportId };
 }

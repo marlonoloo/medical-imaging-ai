@@ -1,15 +1,21 @@
 import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
 import type { Types } from '@cornerstonejs/core';
+import { getRenderingEngine } from '@cornerstonejs/core';
 import { ViewportService } from '../services/viewportService';
 import { backendService } from '../services/backendService';
 import { DicomState } from '../state/DicomState';
 
-export function setupClassifierUI(dicomViewport: Types.IStackViewport, pngViewport: Types.IStackViewport) {
+export function setupClassifierUI(renderingEngineId: string, dicomViewportId: string, pngViewportId: string) {
   const dicomElement = document.getElementById('cornerstone-element');
   const pngElement = document.getElementById('processed-cornerstone-element');
   
   if (!dicomElement || !pngElement) {
     throw new Error("Required viewport elements not found");
+  }
+
+  const renderingEngine = getRenderingEngine(renderingEngineId);
+  if (!renderingEngine) {
+    throw new Error(`Rendering engine ${renderingEngineId} not found`);
   }
 
   // Prevent context menu on right click
@@ -18,7 +24,7 @@ export function setupClassifierUI(dicomViewport: Types.IStackViewport, pngViewpo
 
   // Drag and drop handlers
   dicomElement.addEventListener('dragover', handleDragOver, false);
-  dicomElement.addEventListener('drop', handleFileSelect.bind(null, dicomViewport), false);
+  dicomElement.addEventListener('drop', handleFileSelect.bind(null, renderingEngineId, dicomViewportId), false);
 
   // File input handler
   const fileInput = document.getElementById('selectFile');
@@ -26,7 +32,10 @@ export function setupClassifierUI(dicomViewport: Types.IStackViewport, pngViewpo
     const file = e.target.files[0];
     DicomState.setCurrentFile(file);
     const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(file);
-    ViewportService.loadDicomImage(imageId, dicomViewport);
+    const dicomViewport = renderingEngine.getViewport(dicomViewportId) as Types.IStackViewport;
+    if (dicomViewport) {
+      ViewportService.loadDicomImage(imageId, dicomViewport);
+    }
   });
 
   // Process button and probability display
@@ -42,11 +51,36 @@ export function setupClassifierUI(dicomViewport: Types.IStackViewport, pngViewpo
 
     try {
       const { imageUrl, probability } = await backendService.processImage(currentFile);
-      await ViewportService.loadWebImage(imageUrl, pngViewport);
-      const formattedProbability = (probability * 100).toFixed(2);
-      probabilityElement.textContent = `Probability of pneumonia: ${formattedProbability}%`;
+      const pngViewport = renderingEngine.getViewport(pngViewportId) as Types.IStackViewport;
+      if (pngViewport) {
+        await ViewportService.loadWebImage(imageUrl, pngViewport);
+        const formattedProbability = (probability * 100).toFixed(2);
+        probabilityElement.textContent = `Probability of pneumonia: ${formattedProbability}%`;
+      }
     } catch (error) {
       alert('Failed to process image');
+    }
+  });
+
+  // Reset buttons
+  const resetPrimaryButton = document.getElementById('resetPrimaryViewport');
+  const resetSecondaryButton = document.getElementById('resetSecondaryViewport');
+
+  resetPrimaryButton?.addEventListener('click', () => {
+    const viewport = renderingEngine.getViewport(dicomViewportId) as Types.IStackViewport;
+    if (viewport) {
+      viewport.resetCamera();
+      viewport.resetProperties();
+      viewport.render();
+    }
+  });
+
+  resetSecondaryButton?.addEventListener('click', () => {
+    const viewport = renderingEngine.getViewport(pngViewportId) as Types.IStackViewport;
+    if (viewport) {
+      viewport.resetCamera();
+      viewport.resetProperties();
+      viewport.render();
     }
   });
 }
@@ -61,7 +95,7 @@ function createProbabilityElement(processButton: HTMLElement | null): HTMLDivEle
   return probabilityElement;
 }
 
-function handleFileSelect(viewport: Types.IStackViewport, evt: DragEvent) {
+function handleFileSelect(renderingEngineId: string, viewportId: string, evt: DragEvent) {
   evt.stopPropagation();
   evt.preventDefault();
   const files = evt.dataTransfer?.files;
@@ -69,7 +103,13 @@ function handleFileSelect(viewport: Types.IStackViewport, evt: DragEvent) {
   const file = files[0];
   DicomState.setCurrentFile(file);
   const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(file);
-  ViewportService.loadDicomImage(imageId, viewport);
+
+  const renderingEngine = getRenderingEngine(renderingEngineId);
+  if (!renderingEngine) return;
+  const viewport = renderingEngine.getViewport(viewportId) as Types.IStackViewport;
+  if (viewport) {
+    ViewportService.loadDicomImage(imageId, viewport);
+  }
 }
 
 function handleDragOver(evt: DragEvent) {

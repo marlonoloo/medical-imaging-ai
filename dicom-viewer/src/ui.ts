@@ -39,6 +39,9 @@ export function setupUI(dicomViewport: Types.IStackViewport, pngViewport: Types.
   // Update process buttons click handlers
   const processButton = document.getElementById('submitProcessing');
   const cardiacButton = document.getElementById('submitCardiac');
+  // New Reset buttons
+  const resetPrimaryButton = document.getElementById('resetPrimaryViewport');
+  const resetSecondaryButton = document.getElementById('resetSecondaryViewport');
   
   const probabilityElement = document.createElement('div');
   probabilityElement.id = 'probability-display';
@@ -78,6 +81,19 @@ export function setupUI(dicomViewport: Types.IStackViewport, pngViewport: Types.
     } catch (error) {
       alert('Failed to process cardiac image');
     }
+  });
+
+  // Add listeners for reset buttons
+  resetPrimaryButton?.addEventListener('click', () => {
+    dicomViewport.resetCamera();
+    dicomViewport.resetProperties();
+    dicomViewport.render();
+  });
+
+  resetSecondaryButton?.addEventListener('click', () => {
+    pngViewport.resetCamera();
+    pngViewport.resetProperties();
+    pngViewport.render();
   });
 }
 

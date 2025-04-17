@@ -1,4 +1,4 @@
-import { run } from './init';
+import { initCornerstoneServices } from './init';
 import { setupSegmentorUI } from './ui/segmentorUI';
 import { Enums, Types, RenderingEngine, volumeLoader, setVolumesForViewports, eventTarget, imageLoader, metaData } from '@cornerstonejs/core';
 import * as cornerstoneTools from '@cornerstonejs/tools';
@@ -6,51 +6,59 @@ import { cornerstoneNiftiImageLoader, createNiftiImageIdsAndCacheMetadata } from
 import { inflate } from 'pako';
 import { backendService } from './services/backendService';
 import JSZip from 'jszip';
+import { getRenderingEngine } from '@cornerstonejs/core';
+import { registerWebImageLoader, addWebImageMetadataProvider } from './webImageLoader';
 
 (async function main() {
-  const dicomElement = document.getElementById('cornerstone-element') as HTMLDivElement;
-  const resultElement = document.getElementById('processed-cornerstone-element') as HTMLDivElement;
-
+  const dicomElement = document.getElementById('cornerstone-element');
+  const resultElement = document.getElementById('processed-cornerstone-element');
+  
   if (!dicomElement || !resultElement) {
     throw new Error("Required viewport elements not found");
   }
 
-  await run(dicomElement, resultElement);
+  // 1. Initialize Services
+  await initCornerstoneServices(); 
+  // 1b. Register Web Image Loader **BEFORE** it might be used
+  registerWebImageLoader(); 
+  addWebImageMetadataProvider();
 
-  const renderingEngine = new RenderingEngine('myRenderingEngine');
+  // 2. Create Rendering Engine
+  const renderingEngineId = 'segmentorRenderingEngine';
+  const renderingEngine = new RenderingEngine(renderingEngineId);
 
-  // Create viewports for original and processed images
-  const viewportInput = {
-    viewportId: 'original-viewport',
-    type: Enums.ViewportType.ORTHOGRAPHIC,
-    element: dicomElement,
-    defaultOptions: {
-      orientation: Enums.OrientationAxis.AXIAL,
-      background: [0.2, 0, 0.2] as Types.Point3,
+  // 3. Define Viewport Inputs with Specific Types
+  const viewportInputArray = [
+    {
+      viewportId: 'NIFTI_VOLUME_VIEWPORT',
+      type: Enums.ViewportType.ORTHOGRAPHIC, // For NIFTI Input
+      element: dicomElement as HTMLDivElement,
+      defaultOptions: {
+        orientation: Enums.OrientationAxis.AXIAL,
+        background: <Types.Point3>[0.2, 0, 0.2],
+      },
     },
-  };
-
-  const viewportOutput = {
-    viewportId: 'processed-viewport',
-    type: Enums.ViewportType.STACK,
-    element: resultElement,
-    defaultOptions: {
-      background: [0.2, 0, 0.2] as Types.Point3,
+    {
+      viewportId: 'SEGMENTATION_RESULT_STACK_VIEWPORT',
+      type: Enums.ViewportType.STACK, // For PNG Slice Output
+      element: resultElement as HTMLDivElement,
+      defaultOptions: {
+        background: <Types.Point3>[0.2, 0, 0.2],
+      },
     },
-  };
+  ];
 
-  renderingEngine.enableElement(viewportInput);
-  renderingEngine.enableElement(viewportOutput);
+  // 4. Enable Elements
+  renderingEngine.setViewports(viewportInputArray);
 
-  const volumeViewport = renderingEngine.getViewport(
-    'original-viewport'
-  ) as Types.IVolumeViewport;
+  // 5. Get Correctly Typed Viewport Instances
+  const volumeViewport = renderingEngine.getViewport('NIFTI_VOLUME_VIEWPORT') as Types.IVolumeViewport;
+  const resultViewport = renderingEngine.getViewport('SEGMENTATION_RESULT_STACK_VIEWPORT') as Types.IStackViewport;
 
-  const resultViewport = renderingEngine.getViewport(
-    'processed-viewport'
-  ) as Types.IStackViewport;
-
+  // 6. Call UI Setup with Correct Viewports
   setupSegmentorUI(volumeViewport, resultViewport);
+  
+  // Note: ToolGroup setup is handled within setupSegmentorUI/setupTools now
 })();
 
 // Function to load the segmentation result into the viewport
