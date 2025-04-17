@@ -93,29 +93,69 @@ export function setupSegmentorUI(
 
   resetPrimaryButton?.addEventListener('click', () => {
     if (volumeViewport) {
-      // 1. Store current camera position/focal point (determines slice)
+      // 1. Get current camera state (includes slice position)
       const currentCamera = volumeViewport.getCamera();
 
-      // 2. Reset camera (resets zoom/pan AND slice position)
+      // 2. Reset camera to get default centering, zoom, and orientation 
+      //    (Note: This temporarily moves to the middle slice)
       volumeViewport.resetCamera();
-
-      // 3. Get the zoom level (parallelScale) from the reset state
       const resetCameraState = volumeViewport.getCamera();
 
-      // 4. Restore original slice position but keep reset zoom
+      // 3. Calculate the vector along the view direction (view plane normal)
+      //    This assumes the view hasn't been rotated significantly from default axial.
+      //    A more robust method might use camera direction vectors if needed.
+      const viewPlaneNormal = resetCameraState.viewPlaneNormal;
+      if (!viewPlaneNormal) { 
+          console.warn('View plane normal not available on reset camera state, cannot preserve slice accurately.');
+          // Fallback: Just use the fully reset state + default VOI
+          if (defaultNiftiVoiRange) {
+            volumeViewport.setProperties({ voiRange: defaultNiftiVoiRange });
+          }
+          volumeViewport.render();
+          return; 
+      }
+      
+      // 4. Calculate the 'depth' difference between the current slice's focal point
+      //    and the reset (middle slice) focal point along the view normal.
+      const vectorFromResetToCurrentFocal = [
+          currentCamera.focalPoint[0] - resetCameraState.focalPoint[0],
+          currentCamera.focalPoint[1] - resetCameraState.focalPoint[1],
+          currentCamera.focalPoint[2] - resetCameraState.focalPoint[2],
+      ];
+      // Project this vector onto the viewPlaneNormal to get the signed distance along the normal
+      const depthDifference = 
+          vectorFromResetToCurrentFocal[0] * viewPlaneNormal[0] +
+          vectorFromResetToCurrentFocal[1] * viewPlaneNormal[1] +
+          vectorFromResetToCurrentFocal[2] * viewPlaneNormal[2];
+
+      // 5. Calculate the target camera state: Start from the fully reset state 
+      //    and shift the position and focal point along the view normal by the depthDifference
+      //    to return to the original slice depth, while keeping default pan/zoom.
+      const targetFocalPoint: Types.Point3 = [
+          resetCameraState.focalPoint[0] + depthDifference * viewPlaneNormal[0],
+          resetCameraState.focalPoint[1] + depthDifference * viewPlaneNormal[1],
+          resetCameraState.focalPoint[2] + depthDifference * viewPlaneNormal[2],
+      ];
+      const targetPosition: Types.Point3 = [
+          resetCameraState.position[0] + depthDifference * viewPlaneNormal[0],
+          resetCameraState.position[1] + depthDifference * viewPlaneNormal[1],
+          resetCameraState.position[2] + depthDifference * viewPlaneNormal[2],
+      ];
+
+      // 6. Set the calculated camera state (restored slice depth, default pan/zoom/orientation)
       volumeViewport.setCamera({
-        position: currentCamera.position,
-        focalPoint: currentCamera.focalPoint,
-        viewUp: resetCameraState.viewUp, // Use reset viewUp
-        parallelScale: resetCameraState.parallelScale, // Use reset zoom
+        position: targetPosition,
+        focalPoint: targetFocalPoint,
+        viewUp: resetCameraState.viewUp,             // Use default orientation
+        parallelScale: resetCameraState.parallelScale, // Use default zoom
       });
       
-      // 5. Reset VOI using stored default range
+      // 7. Reset VOI using stored default range
       if (defaultNiftiVoiRange) {
         volumeViewport.setProperties({ voiRange: defaultNiftiVoiRange });
       }
       
-      // 6. Render
+      // 8. Render the final state
       volumeViewport.render();
     }
   });
