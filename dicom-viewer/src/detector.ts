@@ -1,6 +1,6 @@
 import { run } from './init';
 import { setupDetectorUI } from './ui/detectorUI';
-import { Types, getRenderingEngine } from '@cornerstonejs/core';
+import { Types } from '@cornerstonejs/core';
 
 (async function main() {
   const dicomElement = document.getElementById('cornerstone-element');

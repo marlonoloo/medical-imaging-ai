@@ -1,81 +1,152 @@
-# DICOM Medical Image Viewer and Analysis
+# Medical Imaging AI Platform
 
-A web-based DICOM viewer with integrated AI analysis capabilities for medical imaging. The project consists of two main components:
+A comprehensive platform for medical image analysis using deep learning, supporting DICOM and NIfTI formats with multiple AI models for classification, detection, and segmentation.
 
-1. A web-based DICOM viewer (frontend)
-2. A Flask-based AI analysis server (backend)
+## Overview
+
+This platform consists of two main components:
+
+1. **Flask Backend (`flask_app`)**: Provides API endpoints for AI inference, including pneumonia classification, cardiac chamber detection, and left atrium segmentation.
+
+2. **DICOM Viewer Frontend (`dicom-viewer`)**: A modern web application built with TypeScript and Cornerstone.js for viewing and analyzing medical images with integrated AI capabilities.
 
 ## Features
 
-- DICOM image viewing with standard medical imaging tools
-- Pneumonia detection with probability estimation
-- Cardiac chamber analysis
-- Interactive viewport controls (pan, zoom, window/level)
-- Drag-and-drop DICOM file loading
+- **Multi-model AI Analysis**
+  - Pneumonia Classification with CAM visualization
+  - Cardiac Chamber Detection with bounding box visualization
+  - Left Atrium Segmentation for 3D volumes
 
-## Project Structure
+- **Medical Image Support**
+  - DICOM format for X-rays and CT scans
+  - NIfTI format for volumetric data
 
+- **Interactive Visualization**
+  - Heatmap overlays for classification results
+  - Bounding box visualization for detection models
+  - Volume segmentation with slice-by-slice display
+
+## Backend Setup (Flask)
+
+### Prerequisites
+
+- Python 3.8+
+- CUDA-compatible GPU (recommended for inference)
+
+### Installation
+
+1. Navigate to the Flask application directory:
+   ```
+   cd flask_app
+   ```
+
+2. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Set up model weights:
+   Ensure the pre-trained model weights are placed in the `flask_app/weights/` directory:
+   - `pneumonia_weights.ckpt`
+   - `cardiac_weights.ckpt`
+   - `atrium_weights.ckpt`
+
+### Running the Backend
+
+Start the Flask server:
 ```
-project/
-├── dicom-viewer/        # Frontend application
-│   ├── src/            # Source code
-│   ├── public/         # Static assets
-│   └── package.json    # Dependencies
-└── flask_app/          # Backend server
-    ├── models/         # AI models
-    ├── routes/         # API endpoints
-    ├── utils/          # Helper functions
-    └── requirements.txt
-```
-
-## Setup
-
-### Frontend (DICOM Viewer)
-
-1. Install dependencies:
-```bash
-cd dicom-viewer
-npm install
-```
-
-2. Start development server:
-```bash
-npm run dev
-```
-
-### Backend (Flask Server)
-
-1. Create and activate virtual environment:
-```bash
-cd flask_app
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Start the Flask server:
-```bash
 python app.py
 ```
 
-## Usage
+The server will be available at `http://localhost:5000`
 
-1. Open http://localhost:3000 in your browser
-2. Load a DICOM file using drag-and-drop or file selector
-3. Use the processing buttons to analyze images:
-   - "Process Pneumonia" for pneumonia detection
-   - "Process Cardiac" for cardiac chamber analysis
+## Frontend Setup (DICOM Viewer)
 
-## Development
+### Prerequisites
 
-- Frontend built with TypeScript and Cornerstone.js
-- Backend uses Flask and PyTorch
-- AI models: ResNet18-based architectures for both pneumonia and cardiac analysis
+- Node.js 16+
+- npm or yarn
+
+### Installation
+
+1. Navigate to the DICOM viewer directory:
+   ```
+   cd dicom-viewer
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   # or
+   yarn install
+   ```
+
+### Running the Frontend
+
+Start the development server:
+```
+npm run dev
+# or
+yarn dev
+```
+
+The application will be available at `http://localhost:3000`
+
+## API Endpoints
+
+### Pneumonia Classification
+
+```
+POST /predict_cam/pneumonia
+```
+- Request: Form data with DICOM file (`dicom` field)
+- Response: PNG image with CAM overlay
+- Headers: `X-Probability` contains the classification probability
+
+### Cardiac Chamber Detection
+
+```
+POST /predict_cardiac/cardiac
+```
+- Request: Form data with DICOM file (`dicom` field)
+- Response: PNG image with bounding box overlay
+
+### Left Atrium Segmentation
+
+```
+POST /segment_atrium
+```
+- Request: Form data with NIfTI file (`nifti` field)
+- Response: ZIP file containing segmented slice PNGs
+
+## Technical Details
+
+### Backend Technologies
+
+- **Flask**: Web framework for API endpoints
+- **PyTorch**: Deep learning framework for AI models
+- **OpenCV**: Image processing for visualization
+- **Pydicom/Nibabel**: Medical image format handling
+
+### Frontend Technologies
+
+- **TypeScript**: For type-safe code development
+- **Cornerstone.js**: Medical imaging viewer
+- **Webpack**: Module bundling and development server
 
 ## License
 
-[Add your chosen license here]
+This project is licensed under the ISC License.
+
+## Acknowledgments
+
+This platform uses the following open-source libraries:
+- Cornerstone.js for medical image viewing
+- Flask for the backend API
+- PyTorch for deep learning models 

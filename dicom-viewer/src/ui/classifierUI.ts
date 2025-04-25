@@ -1,6 +1,6 @@
 import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
 import type { Types } from '@cornerstonejs/core';
-import { getRenderingEngine, Enums } from '@cornerstonejs/core';
+import { getRenderingEngine } from '@cornerstonejs/core';
 import { ViewportService } from '../services/viewportService';
 import { backendService } from '../services/backendService';
 import { DicomState } from '../state/DicomState';

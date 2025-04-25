@@ -1,7 +1,7 @@
 // src/init.ts
 import type { Types } from '@cornerstonejs/core';
 import { RenderingEngine, Enums, init as csInit } from '@cornerstonejs/core';
-import cornerstoneDICOMImageLoader, { init as csImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
+import { init as csImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
 import * as cornerstoneTools from '@cornerstonejs/tools';
 import { init as csToolsInit } from '@cornerstonejs/tools';
 import { registerWebImageLoader, addWebImageMetadataProvider } from './webImageLoader';

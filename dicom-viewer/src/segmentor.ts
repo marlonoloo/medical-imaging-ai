@@ -1,12 +1,7 @@
 import { initCornerstoneServices } from './init';
 import { setupSegmentorUI } from './ui/segmentorUI';
-import { Enums, Types, RenderingEngine, volumeLoader, setVolumesForViewports, eventTarget, imageLoader, metaData } from '@cornerstonejs/core';
-import * as cornerstoneTools from '@cornerstonejs/tools';
-import { cornerstoneNiftiImageLoader, createNiftiImageIdsAndCacheMetadata } from '@cornerstonejs/nifti-volume-loader';
-import { inflate } from 'pako';
-import { backendService } from './services/backendService';
+import { Enums, Types, RenderingEngine, imageLoader, metaData } from '@cornerstonejs/core';
 import JSZip from 'jszip';
-import { getRenderingEngine } from '@cornerstonejs/core';
 import { registerWebImageLoader, addWebImageMetadataProvider } from './webImageLoader';
 
 (async function main() {
