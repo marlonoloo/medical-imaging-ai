@@ -1,0 +1,11 @@
+Flask==3.0.3
+Flask-Cors==3.0.10
+nibabel==3.2.1
+numpy==1.21.2
+opencv-python==4.5.3.56
+pydicom==2.2.2
+pytorch-lightning==1.4.9
+torch==1.9.1
+torchvision==0.10.1
+torchmetrics==0.5.1
+

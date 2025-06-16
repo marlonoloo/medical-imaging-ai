@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Image Analysis Tools</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #app {
+            text-align: center;
+            padding: 2rem 1rem;
+            margin: auto;
+            width: 100%;
+            max-width: 1200px;
+        }
+        header {
+            margin-bottom: 2rem;
+            padding-top: 1rem;
+        }
+        #demo-title {
+            font-size: 2.5em;
+            margin-top: 0;
+            margin-bottom: 0.5em;
+            color: var(--primary-dark);
+        }
+        #demo-description {
+            font-size: 1.2em;
+            margin-bottom: 2em;
+            color: #666;
+        }
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .nav-links a {
+            padding: 15px 30px;
+            background-color: var(--primary, #3498db);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .nav-links a:hover {
+            background-color: var(--primary-dark, #2980b9);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Media query for smaller screens */
+        @media (max-height: 700px) {
+            body {
+                justify-content: flex-start;
+            }
+            #app {
+                margin-top: 2rem;
+                margin-bottom: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1 id="demo-title">Medical Image Analysis Tools</h1>
+            <p id="demo-description">Advanced AI-powered analysis for medical imaging</p>
+        </header>
+        
+        <div class="nav-links">
+            <a href="/classifier">Pneumonia Classifier</a>
+            <a href="/detector">Cardiac Detector</a>
+            <a href="/segmentor">Atrium Segmentor</a>
+        </div>
+    </div>
+</body>
+</html>

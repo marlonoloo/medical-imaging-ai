@@ -1,0 +1,11 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "Medical imaging project",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}

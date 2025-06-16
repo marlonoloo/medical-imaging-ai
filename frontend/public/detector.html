@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cardiac Detector</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1 id="demo-title">Cardiac Detector</h1>
+      <p id="demo-description">Upload a cardiac imaging file for detection analysis</p>
+      <nav>
+        <a href="/classifier">Pneumonia Classifier</a>
+        <a href="/detector" class="active">Cardiac Detector</a>
+        <a href="/segmentor">Atrium Segmentor</a>
+        <a href="/">Home</a>
+      </nav>
+    </header>
+    
+    <form id="file-form">
+      <input id="selectFile" type="file" accept=".dcm">
+    </form>
+    
+    <div id="viewports">
+      <div id="cornerstone-element" class="viewport"></div>
+      <div id="processed-cornerstone-element" class="viewport"></div>
+    </div>
+    
+    <div class="button-group">
+      <button type="button" id="submitCardiac">Process Cardiac</button>
+      <button type="button" id="resetPrimaryViewport">Reset Primary Viewport</button>
+      <button type="button" id="resetSecondaryViewport">Reset Secondary Viewport</button>
+    </div>
+  </div>
+</body>
+</html>
