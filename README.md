@@ -40,6 +40,7 @@ This platform consists of two main components:
 │   ├── webpack.config.js # Webpack configuration
 │   ├── public/         # Static assets (HTML, CSS)
 │   └── src/            # Frontend source code
+├── screenshots/        # Sample screenshots for documentation
 └── README.md           # This file
 ```
 
@@ -169,3 +170,14 @@ This platform utilizes several open-source libraries, including:
 -   Cornerstone.js
 -   Flask
 -   PyTorch
+
+## Screenshots
+
+### Pneumonia Classifier
+![Pneumonia Classifier](screenshots/pneumonia_classifier.png)
+
+### Cardiac Detector
+![Cardiac Detector](screenshots/cardiac_detector.png)
+
+### Left Atrium Segmentor
+![Left Atrium Segmentor](screenshots/atrium_segmentor.png)
