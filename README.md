@@ -160,17 +160,6 @@ The backend exposes the following API endpoints (running on `http://localhost:50
 -   **@cornerstonejs/tools**: Annotation and interaction tools
 -   **Webpack**: Module bundler and development server
 
-## License
-
-This project is licensed under the ISC License.
-
-## Acknowledgments
-
-This platform utilizes several open-source libraries, including:
--   Cornerstone.js
--   Flask
--   PyTorch
-
 ## Screenshots
 
 ### Pneumonia Classifier
@@ -181,3 +170,14 @@ This platform utilizes several open-source libraries, including:
 
 ### Left Atrium Segmentor
 ![Left Atrium Segmentor](screenshots/atrium_segmentor.png)
+
+## License
+
+This project is licensed under the ISC License.
+
+## Acknowledgments
+
+This platform utilizes several open-source libraries, including:
+-   Cornerstone.js
+-   Flask
+-   PyTorch
